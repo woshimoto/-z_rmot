@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "t-zerormot-baseline"
+version = "0.1.0"
+description = "Minimal zero-shot RMOT baseline scaffold for Refer-KITTI and RefCOCO"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.setuptools]
+packages = ["zerormot"]
+
