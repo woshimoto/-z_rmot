@@ -133,6 +133,72 @@ python -m zerormot.evaluate_simple \
   --iou-thr 0.5
 ```
 
+## Next Step: Detector JSON Branch
+
+The next milestone is to run the pipeline through `--proposal-source detector_json`.
+This repo now includes a detector-json exporter scaffold.
+
+First export a detector JSON from `labels_with_ids`. This is not a real open-vocabulary
+detector yet; it is a bridge that validates the detector-json branch and the internal
+tracker path.
+
+```bash
+python scripts/export_refer_kitti_detector_json.py \
+  --data-root /path/to/refer-kitti \
+  --output outputs/refer_kitti_labels_detector.json
+```
+
+Then run the baseline using the exported detector JSON:
+
+```bash
+python -m zerormot.run_refer_kitti \
+  --data-root /path/to/refer-kitti \
+  --output-dir outputs/refer_kitti_detector_branch \
+  --proposal-source detector_json \
+  --detector-json outputs/refer_kitti_labels_detector.json \
+  --config configs/baseline.json
+```
+
+The exporter also writes prompt metadata to:
+
+```text
+outputs/refer_kitti_labels_detector.json.meta.json
+```
+
+This file stores per-sequence prompt suggestions aggregated from the expressions,
+which can be reused when plugging in a real open-vocabulary detector such as
+GroundingDINO or YOLO-World.
+
+### Optional: Hugging Face Grounding DINO Backend
+
+The same exporter also supports an optional `hf_grounding_dino` backend. This is
+the first real open-vocabulary detector path in this repo, but it requires extra
+dependencies such as `torch`, `transformers`, and `Pillow`.
+
+Example:
+
+```bash
+python scripts/export_refer_kitti_detector_json.py \
+  --data-root /path/to/refer-kitti \
+  --output outputs/refer_kitti_gdino.json \
+  --backend hf_grounding_dino \
+  --model-id YOUR_GROUNDING_DINO_MODEL_ID \
+  --device cuda \
+  --prompt-scope per_seq \
+  --max-prompts 24
+```
+
+Then reuse the same RMOT runner:
+
+```bash
+python -m zerormot.run_refer_kitti \
+  --data-root /path/to/refer-kitti \
+  --output-dir outputs/refer_kitti_gdino_branch \
+  --proposal-source detector_json \
+  --detector-json outputs/refer_kitti_gdino.json \
+  --config configs/baseline.json
+```
+
 ## Detector JSON Format
 
 Both Refer-KITTI and RefCOCO runners can read detector proposals from JSON:
@@ -179,4 +245,5 @@ Recommended next extension points:
 - `zerormot/query.py`: replace/augment rule parsing with LLM JSON output.
 - `zerormot/scoring.py`: add VLM tracklet memory and self-verification scores.
 - `zerormot/proposals.py`: add GroundingDINO / YOLO-World proposal generation.
+- `scripts/export_refer_kitti_detector_json.py`: swap the `labels` backend for a real detector backend.
 - `zerormot/run_refer_kitti.py`: cache per-tracklet VLM outputs before scoring.
