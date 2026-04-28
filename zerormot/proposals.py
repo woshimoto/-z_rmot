@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .io import find_image_dir, image_size, list_expression_files, list_frame_stems, load_config, read_expression, read_kitti_label_file
+from .io import find_image_dir, list_expression_files, list_frame_stems, load_config, read_expression, read_kitti_label_file
 from .query import ParsedQuery, parse_query
 from .structures import Detection
 
@@ -70,13 +70,7 @@ class HFGroundingDINOProposalGenerator(ProposalGenerator):
         inputs = self.processor(images=image, text=text_labels, return_tensors="pt").to(self.model.device)
         with self._torch.no_grad():
             outputs = self.model(**inputs)
-        results = self.processor.post_process_grounded_object_detection(
-            outputs,
-            inputs.input_ids,
-            threshold=self.box_threshold,
-            text_threshold=self.text_threshold,
-            target_sizes=[(h, w)],
-        )
+        results = self._post_process_grounded_outputs(outputs, inputs.input_ids, h, w)
         result = results[0]
         raw_labels = result.get("text_labels") or result.get("labels") or []
         detections: list[Detection] = []
@@ -92,6 +86,25 @@ class HFGroundingDINOProposalGenerator(ProposalGenerator):
                 )
             )
         return detections
+
+    def _post_process_grounded_outputs(self, outputs: Any, input_ids: Any, height: int, width: int) -> list[dict[str, Any]]:
+        post_process = self.processor.post_process_grounded_object_detection
+        try:
+            return post_process(
+                outputs,
+                input_ids,
+                threshold=self.box_threshold,
+                text_threshold=self.text_threshold,
+                target_sizes=[(height, width)],
+            )
+        except TypeError:
+            return post_process(
+                outputs,
+                input_ids,
+                box_threshold=self.box_threshold,
+                text_threshold=self.text_threshold,
+                target_sizes=[(height, width)],
+            )
 
 
 def class_text_from_id(class_id: int | None, config: dict[str, Any]) -> str | None:
@@ -110,9 +123,7 @@ def _normalize_prompt_for_gdino(prompt: str) -> str:
     prompt = prompt.strip()
     if not prompt:
         return prompt
-    if prompt.endswith("."):
-        return prompt
-    return prompt
+    return prompt.rstrip(".")
 
 
 def _denormalize_detected_label(label: Any, prompts: list[str]) -> str:
@@ -167,7 +178,23 @@ def prompts_from_query(query: ParsedQuery) -> list[str]:
         for attr in sorted(query.attributes):
             prompts.append(f"{attr} {category}")
     for token in sorted(query.tokens):
-        if token in {"the", "a", "an", "on", "in", "of", "to", "and", "with"}:
+        if token in {
+            "the",
+            "a",
+            "an",
+            "on",
+            "in",
+            "of",
+            "to",
+            "and",
+            "with",
+            "left",
+            "right",
+            "behind",
+            "front",
+            "near",
+            "next",
+        }:
             continue
         prompts.append(token)
     return dedupe_preserve_order(prompts)

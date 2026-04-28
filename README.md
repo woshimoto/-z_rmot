@@ -148,6 +148,13 @@ python scripts/export_refer_kitti_detector_json.py \
   --output outputs/refer_kitti_labels_detector.json
 ```
 
+Inspect the exported proposal file:
+
+```bash
+python scripts/inspect_detector_json.py \
+  --detector-json outputs/refer_kitti_labels_detector.json
+```
+
 Then run the baseline using the exported detector JSON:
 
 ```bash
@@ -182,7 +189,7 @@ python scripts/export_refer_kitti_detector_json.py \
   --data-root /path/to/refer-kitti \
   --output outputs/refer_kitti_gdino.json \
   --backend hf_grounding_dino \
-  --model-id YOUR_GROUNDING_DINO_MODEL_ID \
+  --model-id IDEA-Research/grounding-dino-base \
   --device cuda \
   --prompt-scope per_seq \
   --max-prompts 24
