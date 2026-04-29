@@ -181,6 +181,8 @@ GroundingDINO or YOLO-World.
 The same exporter also supports an optional `hf_grounding_dino` backend. This is
 the first real open-vocabulary detector path in this repo, but it requires extra
 dependencies such as `torch`, `transformers`, and `Pillow`.
+The exporter is compatible with both multi-label and classic dot-separated
+Grounding DINO text prompt formats used across different `transformers` versions.
 
 Example:
 

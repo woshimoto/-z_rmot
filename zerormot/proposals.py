@@ -66,8 +66,8 @@ class HFGroundingDINOProposalGenerator(ProposalGenerator):
             prompts = list(DEFAULT_OPEN_VOCAB_PROMPTS)
         image = self._Image.open(image_path).convert("RGB")
         h, w = image.size[1], image.size[0]
-        text_labels = [[_normalize_prompt_for_gdino(prompt) for prompt in prompts]]
-        inputs = self.processor(images=image, text=text_labels, return_tensors="pt").to(self.model.device)
+        normalized_prompts = [_normalize_prompt_for_gdino(prompt) for prompt in prompts if prompt.strip()]
+        inputs = self._encode_inputs(image, normalized_prompts)
         with self._torch.no_grad():
             outputs = self.model(**inputs)
         results = self._post_process_grounded_outputs(outputs, inputs.input_ids, h, w)
@@ -86,6 +86,15 @@ class HFGroundingDINOProposalGenerator(ProposalGenerator):
                 )
             )
         return detections
+
+    def _encode_inputs(self, image: Any, prompts: list[str]) -> Any:
+        try:
+            return self.processor(images=image, text=[prompts], return_tensors="pt").to(self.model.device)
+        except TypeError:
+            prompt_text = ". ".join(prompts)
+            if prompt_text and not prompt_text.endswith("."):
+                prompt_text += "."
+            return self.processor(images=image, text=prompt_text, return_tensors="pt").to(self.model.device)
 
     def _post_process_grounded_outputs(self, outputs: Any, input_ids: Any, height: int, width: int) -> list[dict[str, Any]]:
         post_process = self.processor.post_process_grounded_object_detection
